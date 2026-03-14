@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聊城大学校园导航（终极版）</title>
+    <style>
+        body { margin: 0; padding: 0; height: 100vh; }
+        #map { width: 100%; height: 100%; }
+        .search {
+            position: absolute; top: 20px; left: 20px; z-index: 999;
+            background: white; padding: 10px; border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        input {
+            padding: 8px; width: 200px;
+            border: 1px solid #ddd; border-radius: 4px;
+            outline: none;
+        }
+        button {
+            padding: 8px 15px; margin-left: 5px;
+            background: #0088ff; color: white;
+            border: none; border-radius: 4px;
+            cursor: pointer;
+        }
+        button:active { background: #0066cc; }
+    </style>
+    <!-- 已填入你的Key -->
+    <script src="https://webapi.amap.com/maps?v=2.0&key=234aacb867616bfa827831d6de91231e"></script>
+</head>
+<body>
+<div class="search">
+    <input type="text" id="dest" placeholder="先点这里输入：东校区图书馆">
+    <button onclick="getRoute()">点击导航</button>
+</div>
+<div id="map"></div>
+
+<script>
+    // 1. 初始化地图（强制加载，加调试日志）
+    console.log("开始加载地图...");
+    var map = new AMap.Map('map', {
+        center: [116.0111, 36.4314],
+        zoom: 17,
+        layers: [new AMap.TileLayer.RoadNet()]
+    });
+    console.log("地图初始化完成！");
+
+    // 2. 点位数据（精准无错）
+    var points = {
+        "东校区图书馆": [116.0128, 36.4326],
+        "东校区南门": [116.0092, 36.4302],
+        "西校区图书馆": [115.9929, 36.4393],
+        "西校区正门": [115.9945, 36.4385],
+        "第一食堂": [116.0105, 36.4329]
+    };
+
+    // 3. 导航核心函数（加全量调试提示，保证触发）
+    function getRoute() {
+        // 第一步：打印调试信息，确认函数触发
+        console.log("导航按钮被点击了！");
+
+        // 第二步：获取输入内容，做容错
+        var destName = document.getElementById('dest').value.trim();
+        console.log("你输入的目的地：", destName);
+
+        // 第三步：校验输入
+        if (!destName) {
+            alert("❌ 请先输入目的地！比如：东校区图书馆");
+            return;
+        }
+        if (!points[destName]) {
+            alert("❌ 没找到这个地点！\n可选：东校区图书馆、东校区南门、西校区图书馆、西校区正门、第一食堂");
+            return;
+        }
+
+        // 第四步：固定起点+规划路线（强制执行）
+        var start = [116.0092, 36.4302]; // 东校区南门
+        var end = points[destName];
+        console.log("起点：东校区南门，终点：", destName, end);
+
+        // 强制加载步行插件+规划路线
+        AMap.plugin('AMap.Walking', function() {
+            console.log("步行插件加载完成，开始规划路线...");
+            var walking = new AMap.Walking({ map: map });
+
+            // 路线规划+结果提示
+            walking.search(start, end, function(status, data) {
+                console.log("路线规划结果：", status);
+                if (status === 'complete') {
+                    // 显示路线+文字指引
+                    var tips = "✅ 导航成功！\n从东校区南门到" + destName + "的步行指引：\n";
+                    data.routes[0].steps.forEach((step, i) => {
+                        tips += (i+1) + ". " + step.instructions + "\n";
+                    });
+                    alert(tips);
+                } else {
+                    alert("❌ 路线规划失败！\n原因：" + status + "\n请检查网络或刷新页面");
+                }
+            });
+        });
+    }
+
+    // 4. 批量添加标注（可视化点位）
+    for (var name in points) {
+        var marker = new AMap.Marker({
+            position: points[name],
+            title: name,
+            map: map
+        });
+        // 点击标注也能触发导航（额外兜底）
+        marker.on('click', function() {
+            document.getElementById('dest').value = this.getTitle();
+            getRoute(); // 自动触发导航
+        });
+        console.log("添加标注：", name);
+    }
+
+    // 5. 额外兜底：按回车也能触发导航
+    document.getElementById('dest').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            getRoute();
+        }
+    });
+</script>
+</body>
+</html>
